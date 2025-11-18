@@ -1,0 +1,39 @@
+# Build and temp files
+.aws-sam/
+.next/
+dist/
+lambda-*.zip
+node_modules/
+*.log
+.env
+.env.local
+.vercel/
+
+# All deployment zips
+*.zip
+
+# Test files
+test-*.js
+test-*.json
+
+# Temporary data files
+*-checkpoint.json
+lambda-env.json
+response-stats.json
+webhook-check.json
+
+# Obsolete files
+simple-dashboard.html
+
+# Ruby email_viewer
+email_viewer/.env
+email_viewer/vendor/
+email_viewer/.bundle/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/

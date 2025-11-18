@@ -1,0 +1,46 @@
+<div class="email-list">
+    <% if @emails.empty? %>
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <h3>No flagged emails found</h3>
+            <p>Your email classifier hasn't flagged any emails yet, or they haven't been processed.</p>
+        </div>
+    <% else %>
+        <% @emails.each do |email| %>
+            <div class="email-item" onclick="window.location.href='/email/<%= email[:message_id] %>'">
+                <div class="email-sender">
+                    <%= email[:sender_name] %> &lt;<%= email[:sender_email] %>&gt;
+                </div>
+                <div class="email-subject">
+                    <%= email[:subject] %>
+                </div>
+                <div class="email-preview">
+                    <%= email[:preview] %>...
+                </div>
+                <div class="email-meta">
+                    <div>
+                        <span class="flag-reason"><%= email[:flag_reason] %></span>
+                        <% if email[:responded] %>
+                            <span class="responded">✓ Responded</span>
+                        <% else %>
+                            <span class="not-responded">Needs Response</span>
+                        <% end %>
+                    </div>
+                    <div class="email-time">
+                        <%= email[:created_at].strftime('%m/%d %I:%M%p') %>
+                    </div>
+                </div>
+                
+                <% unless email[:responded] %>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="event.stopPropagation(); generateResponse('<%= email[:message_id] %>')">
+                        📝 Generate Response
+                    </button>
+                    <button class="btn" onclick="event.stopPropagation(); markAsHandled('<%= email[:message_id] %>')">
+                        ✓ Mark as Handled
+                    </button>
+                </div>
+                <% end %>
+            </div>
+        <% end %>
+    <% end %>
+</div>
