@@ -787,24 +787,32 @@ async function classifyEmail(email, senderHistory = null) {
   }`;
 
   try {
+    // Build request body - GPT-5 models don't support temperature parameter
+    const model = process.env.MODEL || 'gpt-4';
+    const requestBody = {
+      model: model,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an email classifier. Return a single valid JSON object only. No explanation, no extra keys, no prose, no markdown. The JSON must be parseable by JSON.parse in JavaScript. Do not include any text outside the JSON object.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_completion_tokens: 1000,
+      response_format: { type: "json_object" }
+    };
+
+    // Only add temperature for non-GPT-5 models (GPT-5 is a reasoning model and rejects this parameter)
+    if (!model.startsWith('gpt-5')) {
+      requestBody.temperature = 0.2;
+    }
+
     const response = await axios.post(
       'https://api.openai.com/v1/chat/completions',
-      {
-        model: process.env.MODEL || 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an email classifier. Return a single valid JSON object only. No explanation, no extra keys, no prose, no markdown. The JSON must be parseable by JSON.parse in JavaScript. Do not include any text outside the JSON object.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 1,
-        max_completion_tokens: 1000,
-        response_format: { type: "json_object" }
-      },
+      requestBody,
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
@@ -812,6 +820,12 @@ async function classifyEmail(email, senderHistory = null) {
         }
       }
     );
+
+    // Guard against API errors - check response structure before accessing
+    if (!response.data.choices || !response.data.choices[0]) {
+      console.error('OpenAI returned no choices:', JSON.stringify(response.data));
+      throw new Error('No choices in OpenAI response');
+    }
 
     const responseText = response.data.choices[0].message.content;
 
@@ -849,14 +863,15 @@ async function classifyEmail(email, senderHistory = null) {
 
     // Log stack trace for debugging
     console.error('Error stack:', error.stack);
+
+    // EXPLICIT RETURN - Skip instead of flagging when AI fails
+    // This prevents AI errors from creating false positive flags
+    return {
+      classification: 'SYSTEM_NOTIFICATION',
+      confidence: 0.1,
+      reasoning: `AI classification error: ${error.message}`
+    };
   }
-  
-  // Default to flagging for review
-  return {
-    classification: 'CUSTOMER_SUPPORT_REQUEST',
-    confidence: 0.5,
-    reasoning: 'AI classification failed, defaulting to manual review'
-  };
 }
 
 // Main email processor
