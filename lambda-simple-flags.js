@@ -322,6 +322,30 @@ function isAmazonEmail(email) {
   return false;
 }
 
+// Check if an email is from Shopify (automated system emails)
+function isShopifyEmail(email) {
+  const from = email.from?.emailAddress?.address?.toLowerCase() || '';
+  const subject = email.subject?.toLowerCase() || '';
+
+  // Check for Shopify automated email addresses
+  if (from.includes('flow@shopify.com') ||           // Cart abandoned, flow automation
+      from.includes('mailer@shopify.com') ||         // Security alerts, notifications
+      from.includes('noreply@shopify.com') ||        // System notifications
+      from.includes('notifications@shopify.com')) {   // Order notifications
+    return true;
+  }
+
+  // Check for Shopify automated email patterns in subject
+  if (subject.includes('high-value cart abandoned') ||
+      subject.includes('a new device has logged in to your shopify account') ||
+      subject.includes('shopify security') ||
+      subject.includes('shopify notification')) {
+    return true;
+  }
+
+  return false;
+}
+
 // Helper functions
 const createResponse = (statusCode, body, headers = {}) => ({
   statusCode,
@@ -1021,6 +1045,31 @@ exports.handler = async (event) => {
                 aiReasoning: `Auto-skipped Amazon notification - no action needed in email system`,
                 aiConfidence: 1.0,
                 aiFactors: JSON.stringify({ amazonEmail: true, skipReason: 'Amazon system notification' })
+              });
+
+              continue;
+            }
+
+            if (!classification && isShopifyEmail(email)) {
+              // Skip ALL Shopify automated emails - cart abandoned, security alerts, etc.
+              console.log(`Skipping Shopify notification: ${email.subject}`);
+              await markAsRead(email.id, mailbox, accessToken);
+              stats.discarded++;
+
+              // Store as system notification
+              await db.insert(processedEmails).values({
+                messageId: email.id,
+                internetMessageId: email.internetMessageId,
+                subject: email.subject,
+                senderEmail: email.from?.emailAddress?.address,
+                classification: 'SHOPIFY_NOTIFICATION',
+                status: 'discarded',
+                flagged: false,
+                error: JSON.stringify({ reasoning: `Auto-skipped Shopify notification` }),
+                bodyPreview: email.bodyPreview?.slice(0, 200),
+                aiReasoning: `Auto-skipped Shopify notification - automated system email`,
+                aiConfidence: 1.0,
+                aiFactors: JSON.stringify({ shopifyEmail: true, skipReason: 'Shopify automated notification' })
               });
 
               continue;
