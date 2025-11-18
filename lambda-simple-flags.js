@@ -827,15 +827,24 @@ async function classifyEmail(email, senderHistory = null) {
       throw new Error('No choices in OpenAI response');
     }
 
-    const responseText = response.data.choices[0].message.content;
+    const choice = response.data.choices[0];
+    const responseText = choice.message.content;
 
-    // Log the actual response for debugging
-    console.log('OpenAI response:', responseText);
+    // Log full response for debugging
+    console.log('Full OpenAI choice:', JSON.stringify(choice));
+    console.log('OpenAI response content:', responseText);
     console.log('Response length:', responseText ? responseText.length : 0);
+
+    // Check for refusal (GPT-5 reasoning models may refuse or return empty)
+    if (choice.message.refusal) {
+      console.error('OpenAI refused:', choice.message.refusal);
+      throw new Error(`AI refusal: ${choice.message.refusal}`);
+    }
 
     // Check for empty response
     if (!responseText || responseText.trim() === '') {
       console.error('Empty response from OpenAI');
+      console.error('Finish reason:', choice.finish_reason);
       throw new Error('Empty AI response');
     }
 
