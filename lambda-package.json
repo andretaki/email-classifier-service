@@ -1,0 +1,11 @@
+{
+  "name": "email-classifier-lambda",
+  "version": "1.0.0",
+  "description": "Email classifier Lambda function - minimal dependencies",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.6.0",
+    "drizzle-orm": "^0.29.3",
+    "postgres": "^3.4.3"
+  }
+}
